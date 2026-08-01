@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+*.log
+.DS_Store
+
+# internal docs — not part of the app
+YOUTUBE_QUOTA_FORM_BRIEF.md
+compliance-evidence/
+docs/
+favicon-options-archive/
