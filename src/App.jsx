@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { tracks, LEVELS, trackById, trackQuery } from './data/tracks.js'
 import { PrivacyPolicy, TermsOfService } from './Legal.jsx'
+import { useAuth, savePathway, saveQuizResult } from './auth.jsx'
+import { AuthPage, AccountPage } from './Account.jsx'
+import Landing from './Landing.jsx'
 
 const GOALS = [
   { id: 'job', label: 'Land a job / internship', emoji: '💼' },
@@ -110,6 +113,7 @@ function removeKey(key) {
 }
 
 export default function App() {
+  const { user, loading: authLoading } = useAuth()
   const saved = useMemo(() => {
     const s = loadJSON(STATE_KEY)
     // Never restore into a later step without the interests that step needs.
@@ -161,6 +165,15 @@ export default function App() {
 
   if (route === '#/privacy') return <PrivacyPolicy />
   if (route === '#/terms') return <TermsOfService />
+  if (route === '#/auth') return <AuthPage />
+  if (route === '#/signup') return <AuthPage initialMode="signup" />
+  if (route === '#/account') return <AccountPage />
+
+  // The questionnaire is the signed-in app; visitors get the pitch instead.
+  // Render nothing until the session check settles, so the landing page
+  // doesn't flash for someone who is already logged in.
+  if (authLoading) return <div className="bg-mesh min-h-screen" />
+  if (!user) return <Landing />
 
   return (
     <div className="bg-mesh relative min-h-screen overflow-x-hidden">
@@ -240,11 +253,23 @@ export default function App() {
 /* ----------------------------------------------------------------- Header */
 
 function Header({ step }) {
+  const { user } = useAuth()
   return (
     <header className="animate-fade-up">
       <div className="flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-saffron/80">
         <span className="inline-block h-1.5 w-1.5 animate-float rounded-full bg-saffron" />
         Learn what you love
+        {user && (
+          <a
+            href="#/account"
+            className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] py-1.5 pl-1.5 pr-4 normal-case tracking-normal text-cream transition-colors hover:border-saffron/40"
+          >
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-saffron/20 font-display text-sm text-saffron">
+              {user.name.trim().charAt(0).toUpperCase()}
+            </span>
+            <span className="text-[13px]">{user.name.split(' ')[0]}</span>
+          </a>
+        )}
       </div>
       <h1 className="mt-4 font-display text-6xl leading-[0.9] tracking-tight text-cream sm:text-7xl">
         Skill<span className="italic text-saffron">Path</span>
@@ -534,8 +559,17 @@ function GoalStep({ goals, toggle, onBack, onNext }) {
 /* ------------------------------------------------------------- Results */
 
 function Results({ interests, level, goals, onRestart }) {
+  const { user } = useAuth()
   const selected = interests.map(trackById).filter(Boolean)
   const chosenGoals = (goals || []).filter((g) => GOAL_GUIDANCE[g])
+
+  // Logged-in users get every generated path saved to their account; the
+  // server dedupes by title so revisiting results doesn't spam the list.
+  useEffect(() => {
+    if (!user || !selected.length) return
+    const title = `${selected.map((t) => t.name).join(' · ')} — ${level}`
+    savePathway(user, 'wizard', title, { interests, level, goals })
+  }, [user, interests.join(','), level, goals.join(',')])
 
   return (
     <div className="space-y-14">
@@ -840,6 +874,7 @@ function Metric({ icon, children, tone }) {
 /* ---------------------------------------------------------------- Quiz */
 
 function Quiz({ tracks }) {
+  const { user } = useAuth()
   const questions = useMemo(
     () =>
       tracks.flatMap((t) => t.questions.map((q) => ({ ...q, track: t.name }))),
@@ -859,6 +894,11 @@ function Quiz({ tracks }) {
   )
   const allAnswered = Object.keys(picked).length === questions.length
   const pct = Math.round((score / questions.length) * 100)
+
+  const submitQuiz = () => {
+    setSubmitted(true)
+    saveQuizResult(user, tracks.map((t) => t.name).join(' · '), score, questions.length)
+  }
 
   return (
     <div className="space-y-4">
@@ -916,7 +956,7 @@ function Quiz({ tracks }) {
           <span className="text-sm text-muted">
             {Object.keys(picked).length} / {questions.length} answered
           </span>
-          <ArrowBtn disabled={!allAnswered} onClick={() => setSubmitted(true)}>
+          <ArrowBtn disabled={!allAnswered} onClick={submitQuiz}>
             Submit answers
           </ArrowBtn>
         </div>
@@ -975,6 +1015,7 @@ const LOADING_LINES = [
 ]
 
 function CurriculumSection() {
+  const { user } = useAuth()
   const savedPath = useMemo(() => {
     const p = loadJSON(PATH_KEY)
     return p?.modules?.length ? p : null
@@ -1019,6 +1060,7 @@ function CurriculumSection() {
       setPath(data)
       setStatus('done')
       saveJSON(PATH_KEY, data)
+      savePathway(user, 'curriculum', data.course || 'My curriculum', data)
     } catch {
       setError('Could not reach the server.')
       setStatus('error')

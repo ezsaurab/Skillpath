@@ -35,6 +35,27 @@ Paste or upload your syllabus (text / PDF / photo) and GPT-4o-mini maps it into
 ordered modules — each with learning outcomes, a distinct best-match video per
 topic, and an auto-generated question bank you can download as Markdown.
 
+## Accounts & learning tracker
+
+Visitors land on a marketing page explaining how the ranking works; the
+questionnaire and curriculum tools open once you sign in. New accounts go
+straight to the questionnaire, returning users to their dashboard.
+
+Sign up with an email and password to unlock a personal dashboard at `#/account`:
+
+- **Activity heatmap** — a GitHub-style contribution grid of the last 52 weeks,
+  built from every login, generated path and completed quiz.
+- **Streaks** — current and longest run of consecutive active days, plus total
+  active days.
+- **Saved pathways** — every interest path and curriculum path you generate is
+  stored automatically and can be reopened or deleted later.
+- **Quiz history** — past scores with colour-coded pass bands.
+- **Recent activity** — a timestamped feed of your last actions.
+
+Passwords are hashed with bcrypt and sessions use a signed, `httpOnly` JWT
+cookie. Accounts live in a local SQLite file (`server/data/skillpath.db`,
+gitignored) — nothing to provision.
+
 ## Setup
 
 ```bash
@@ -50,6 +71,8 @@ npm run dev:all             # web on :5173, api on :8787
 | `YOUTUBE_API_KEY` | yes | video search, stats, comments |
 | `OPENAI_API_KEY` | for curriculum mode | syllabus → learning path + questions |
 | `REDIS_URL` | optional | shared cache; falls back to in-memory automatically |
+| `JWT_SECRET` | optional | session signing key; auto-generated and persisted if unset |
+| `ALLOWED_ORIGINS` | optional | comma-separated CORS allowlist (defaults to the dev ports) |
 
 ### Getting a free YouTube Data API key (~3 min)
 
@@ -74,7 +97,24 @@ server/
   channels.js    Boosted Indian-student channels
   curriculum.js  GPT-4o-mini syllabus parsing + question-bank generation
   cache.js       Redis-first cache with bounded in-memory fallback
+  db.js          SQLite schema (users, events, pathways, quiz results)
+  auth.js        Signup / login / logout / session + activity logging
+  account.js     Activity heatmap, streaks, saved pathways, quiz history
 src/
-  App.jsx        Questionnaire → results → quiz → curriculum UI
+  App.jsx        Routing + questionnaire → results → quiz → curriculum UI
+  Landing.jsx    Logged-out homepage: how the ranking works, signup CTAs
+  auth.jsx       Auth context + account-sync helpers
+  Account.jsx    Login / signup screen and the account dashboard
   data/tracks.js Topics, search queries, fallback videos, quiz questions
 ```
+
+### API routes
+
+| Route | Purpose |
+| --- | --- |
+| `POST /api/auth/signup` · `login` · `logout`, `GET /api/auth/me` | accounts & session |
+| `GET /api/me/activity` | heatmap days, streaks, totals, recent events |
+| `GET` · `POST` · `DELETE /api/me/pathways` | saved learning paths |
+| `GET` · `POST /api/me/quizzes` | quiz score history |
+| `GET /api/recommend`, `POST /api/coverage` | ranked videos |
+| `POST /api/curriculum` | syllabus → learning path |

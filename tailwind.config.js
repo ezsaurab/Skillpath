@@ -6,6 +6,7 @@ export default {
       fontFamily: {
         display: ['"Instrument Serif"', 'ui-serif', 'Georgia', 'serif'],
         sans: ['Satoshi', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       colors: {
         ink: '#080809',
@@ -40,6 +41,10 @@ export default {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
         },
+        'meter-fill': {
+          '0%': { transform: 'scaleX(0)' },
+          '100%': { transform: 'scaleX(1)' },
+        },
       },
       animation: {
         'fade-up': 'fade-up .8s cubic-bezier(.2,.7,.2,1) both',
@@ -48,6 +53,7 @@ export default {
         float: 'float 7s ease-in-out infinite',
         drift: 'drift 18s ease-in-out infinite',
         shimmer: 'shimmer 2.2s linear infinite',
+        'meter-fill': 'meter-fill 1.4s cubic-bezier(.2,.7,.2,1) both',
       },
     },
   },

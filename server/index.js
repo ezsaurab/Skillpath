@@ -1,15 +1,34 @@
 import express from 'express'
 import cors from 'cors'
 import multer from 'multer'
+import cookieParser from 'cookie-parser'
 import { createHash } from 'node:crypto'
 import 'dotenv/config'
 import { recommend, YouTubeError } from './youtube.js'
 import { analyzeCurriculum, pdfToText, CurriculumError } from './curriculum.js'
 import { initCache, cacheGet, cacheSet, cacheBackend } from './cache.js'
+import { authRouter } from './auth.js'
+import { accountRouter } from './account.js'
 
 const app = express()
-app.use(cors())
+// Session cookies ride on these requests, so only trusted origins may send
+// them — reflecting any origin would let a third-party site act as the user.
+const ALLOWED_ORIGINS = (
+  process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:4173'
+).split(',')
+app.use(
+  cors({
+    credentials: true,
+    origin: (origin, cb) =>
+      // No Origin header = same-origin/curl; the Vite proxy makes the app itself same-origin.
+      cb(null, !origin || ALLOWED_ORIGINS.includes(origin)),
+  }),
+)
 app.use(express.json({ limit: '2mb' }))
+app.use(cookieParser())
+
+app.use('/api/auth', authRouter)
+app.use('/api/me', accountRouter)
 
 const upload = multer({
   storage: multer.memoryStorage(),

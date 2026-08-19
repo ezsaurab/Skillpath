@@ -9,3 +9,6 @@ YOUTUBE_QUOTA_FORM_BRIEF.md
 compliance-evidence/
 docs/
 favicon-options-archive/
+
+# Local accounts database & session secret
+server/data/
